@@ -1,0 +1,2232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Dumela Client Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <style>
+        /* Chosen Palette: Default (Blue/Grey), Green/Earth, Purple/Gold */
+        /* Application Structure Plan: The application now integrates Firestore for cloud-based data storage, enabling multi-device access and real-time updates. The 'Settings' modal retains UI color scheme selection. Client data, list management, and custom headers are all persisted in Firestore. User authentication is handled by Firebase. This design ensures data consistency and accessibility from any internet-time updates. The 'Settings' modal retains UI color scheme selection. Client data, list management, and custom headers are all persisted in Firebase. This design ensures data consistency and accessibility from any internet-connected device, enhancing collaboration and data management. */
+        /* Visualization & Content Choices:
+        - Theme Selection:
+            - Goal: Allow users to personalize the application's visual appearance.
+            - Presentation Method: Radio buttons within the Settings modal.
+            - Interaction: Clicking a radio button triggers a JavaScript function to update CSS variables, applying the chosen theme instantly.
+            - Justification: Provides direct and immediate feedback for theme changes, enhancing user engagement and satisfaction.
+            - Library/Method: Vanilla JavaScript and CSS Custom Properties (variables).
+        - Client Data Display:
+            - Goal: Present client information in an organized, searchable, and interactive table.
+            - Presentation Method: HTML table with dynamic rendering.
+            - Interaction: Search bar for filtering, context menu for edit/delete, dashboard cards for quick summaries and filtering.
+            - Justification: Provides a familiar and efficient way to manage client records.
+            - Library/Method: Vanilla JavaScript, Bootstrap table styling.
+        - Data Entry/Edit Form:
+            - Goal: Provide a clear interface for adding and modifying client records.
+            - Presentation Method: HTML form with input fields and dropdowns.
+            - Interaction: Submit button to save, cancel button to clear, auto-population for editing.
+            - Justification: Standard form design for intuitive data input.
+            - Library/Method: Vanilla JavaScript, Bootstrap form styling.
+        - List Management:
+            - Goal: Allow users to categorize clients into different lists.
+            - Presentation Method: Dropdown selector, buttons for new/delete list.
+            - Interaction: Switching lists updates the displayed clients; creating/deleting lists updates the available options.
+            - Justification: Enhances organization and scalability for diverse client groups.
+            - Library/Method: Vanilla JavaScript.
+        - Excel Import/Export:
+            - Goal: Facilitate bulk data entry and data backup.
+            - Presentation Method: File input, sheet selector, preview table, import/export buttons.
+            - Interaction: File selection, sheet switching, import confirmation with duplicate handling.
+            - Justification: Streamlines data management for large datasets.
+            - Library/Method: SheetJS (XLSX).
+        - Custom Modals (Alert/Confirm/Duplicate):
+            - Goal: Provide non-disruptive user feedback and confirmation.
+            - Presentation Method: Bootstrap modals.
+            - Interaction: Buttons for confirmation/cancellation.
+            - Justification: Improves user experience by avoiding native browser alerts.
+            - Library/Method: Bootstrap JavaScript.
+        - Dashboard Summary Cards:
+            - Goal: Provide quick, at-a-glance statistics about client data.
+            - Presentation Method: Styled cards with icons and counts.
+            - Interaction: Double-click to filter for "Completed Info" clients.
+            - Justification: Offers immediate insights and interactive filtering.
+            - Library/Method: HTML/CSS, Vanilla JavaScript.
+        */
+        /* CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. */
+
+        :root {
+            /* Default Theme (Blue/Grey) */
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --dark-color: #343a40;
+            --info-color: #17a2b8;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --light-bg: #f4f6f9;
+            --card-bg: white;
+            --text-color: #333;
+            --muted-text: #6c757d;
+            --header-text: white;
+            --table-striped-bg: #f8f9fa;
+            --table-hover-bg: #e2e6ea;
+            --duplicate-row-bg: #fff3cd;
+        }
+
+        /* Green/Earth Theme */
+        body[data-theme="green-earth"] {
+            --primary-color: #28a745; /* Green */
+            --secondary-color: #6f42c1; /* Darker Purple for contrast */
+            --dark-color: #34495e; /* Dark blue-grey */
+            --info-color: #1abc9c; /* Turquoise */
+            --success-color: #2ecc71; /* Emerald Green */
+            --warning-color: #f39c12; /* Orange-Yellow */
+            --danger-color: #e74c3c; /* Red */
+            --light-bg: #ecf0f1; /* Light grey-blue */
+            --card-bg: white;
+            --text-color: #2c3e50; /* Dark blue-grey text */
+            --muted-text: #7f8c8d; /* Grey */
+            --header-text: white;
+            --table-striped-bg: #f0f4f5;
+            --table-hover-bg: #dbe4e6;
+            --duplicate-row-bg: #ffeaa7; /* Lighter yellow for duplicates */
+        }
+
+        /* Purple/Gold Theme */
+        body[data-theme="purple-gold"] {
+            --primary-color: #6f42c1; /* Purple */
+            --secondary-color: #6c757d; /* Grey */
+            --dark-color: #2c3e50; /* Dark blue */
+            --info-color: #8e44ad; /* Dark purple */
+            --success-color: #27ae60; /* Green */
+            --warning-color: #f1c40f; /* Gold */
+            --danger-color: #c0392b; /* Dark red */
+            --light-bg: #f8f4ff; /* Very light purple */
+            --card-bg: white;
+            --text-color: #34495e; /* Dark blue-grey */
+            --muted-text: #95a5a6; /* Light grey */
+            --header-text: white;
+            --table-striped-bg: #f3effa;
+            --table-hover-bg: #e6dff0;
+            --duplicate-row-bg: #fffacd; /* Lighter gold for duplicates */
+        }
+
+        body {
+            background-color: var(--light-bg);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            padding: 20px;
+            color: var(--text-color);
+        }
+        .container {
+            max-width: 1200px;
+        }
+        .card {
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: none;
+            margin-bottom: 20px;
+            background-color: var(--card-bg);
+        }
+        .card-header {
+            background-color: var(--primary-color);
+            color: var(--header-text);
+            font-weight: bold;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+        }
+        .btn {
+            border-radius: 8px !important;
+            margin-right: 5px;
+        }
+        .btn-primary { background-color: var(--primary-color); border-color: var(--primary-color); }
+        .btn-primary:hover { background-color: var(--primary-color); border-color: var(--primary-color); filter: brightness(90%); }
+        .btn-secondary { background-color: var(--secondary-color); border-color: var(--secondary-color); }
+        .btn-secondary:hover { background-color: var(--secondary-color); border-color: var(--secondary-color); filter: brightness(90%); }
+        .btn-success { background-color: var(--success-color); border-color: var(--success-color); }
+        .btn-success:hover { background-color: var(--success-color); border-color: var(--success-color); filter: brightness(90%); }
+        .btn-danger { background-color: var(--danger-color); border-color: var(--danger-color); }
+        .btn-danger:hover { background-color: var(--danger-color); border-color: var(--danger-color); filter: brightness(90%); }
+        .btn-info { background-color: var(--info-color); border-color: var(--info-color); }
+        .btn-info:hover { background-color: var(--info-color); border-color: var(--info-color); filter: brightness(90%); }
+        .btn-outline-primary { color: var(--primary-color); border-color: var(--primary-color); }
+        .btn-outline-primary:hover { background-color: var(--primary-color); color: var(--header-text); }
+        .btn-outline-light { color: var(--header-text); border-color: var(--header-text); }
+        .btn-outline-light:hover { background-color: var(--header-text); color: var(--dark-color); }
+        .btn-outline-danger { color: var(--danger-color); border-color: var(--danger-color); }
+        .btn-outline-danger:hover { background-color: var(--danger-color); color: var(--header-text); }
+        .btn-outline-secondary { color: var(--secondary-color); border-color: var(--secondary-color); }
+        .btn-outline-secondary:hover { background-color: var(--secondary-color); color: var(--header-text); }
+
+        .table {
+            background: var(--card-bg);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+        .table th, .table td {
+            padding: 8px 12px;
+            vertical-align: middle;
+            word-wrap: break-word;
+            color: var(--text-color);
+        }
+        .table-striped > tbody > tr:nth-of-type(odd) > * {
+            background-color: var(--table-striped-bg);
+        }
+        .table-hover > tbody > tr:hover > * {
+            background-color: var(--table-hover-bg);
+        }
+        .table-responsive {
+            margin-top: 20px;
+        }
+        input.form-control, select.form-control, textarea.form-control {
+            border-radius: 6px;
+            border-color: var(--secondary-color);
+            color: var(--text-color);
+            background-color: var(--card-bg);
+        }
+        input.form-control::placeholder, textarea.form-control::placeholder {
+            color: var(--muted-text);
+        }
+        h2, h3, h5, h6 {
+            color: var(--text-color);
+        }
+        .dashboard-card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+        .dashboard-card-title {
+            font-weight: bold;
+        }
+        .dashboard-summary-card .card-body {
+            padding: 20px;
+        }
+        .dashboard-summary-card h1 {
+            margin-top: 0;
+            margin-bottom: 5px;
+        }
+        .list-group-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--card-bg);
+            color: var(--text-color);
+        }
+        .duplicate-row {
+            background-color: var(--duplicate-row-bg);
+        }
+        /* Custom context menu styles */
+        #customContextMenu {
+            position: absolute;
+            background-color: var(--card-bg);
+            border: 1px solid var(--secondary-color);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            border-radius: 5px;
+            overflow: hidden;
+            min-width: 120px;
+            display: none;
+        }
+        #customContextMenu li {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-color);
+        }
+        #customContextMenu li:hover {
+            background-color: var(--table-hover-bg);
+        }
+        /* Overlay for login screen */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            background-image: url('istockphoto-1035417246-612x612.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+        }
+        .login-card h2 {
+            margin-bottom: 25px;
+            color: var(--primary-color);
+        }
+        .login-card .form-control {
+            margin-bottom: 15px;
+        }
+        .login-card .btn {
+            width: 100%;
+            padding: 10px;
+            font-size: 1.1rem;
+        }
+        .login-error {
+            color: var(--danger-color);
+            margin-top: 10px;
+        }
+        /* Added for hover effect on dashboard cards */
+        .dashboard-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
+        .dashboard-card {
+            transition: all 0.2s ease-in-out;
+        }
+        .text-muted {
+            color: var(--muted-text) !important;
+        }
+        .text-primary {
+            color: var(--primary-color) !important;
+        }
+        .bg-primary { background-color: var(--primary-color) !important; }
+        .bg-secondary { background-color: var(--secondary-color) !important; }
+        .bg-dark { background-color: var(--dark-color) !important; }
+        .bg-info { background-color: var(--info-color) !important; }
+        .bg-success { background-color: var(--success-color) !important; }
+        .bg-warning { background-color: var(--warning-color) !important; }
+        .bg-danger { background-color: var(--danger-color) !important; }
+        .border-primary { border-color: var(--primary-color) !important; }
+        .border-success { border-color: var(--success-color) !important; }
+        .border-info { border-color: var(--info-color) !important; }
+        .border-warning { border-color: var(--warning-color) !important; }
+        .border-dark { border-color: var(--dark-color) !important; }
+        .text-dark { color: var(--dark-color) !important; }
+        .text-white { color: white !important; }
+        .btn-close-white { filter: invert(1) grayscale(100%) brightness(200%); } /* For dark headers */
+
+        /* Loading Spinner */
+        #loadingSpinner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 3000;
+            display: none; /* Hidden by default */
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 2999;
+            display: none; /* Hidden by default */
+        }
+    </style>
+</head>
+<body>
+<div class="container" id="mainAppContent" style="display: none;">
+    <div class="text-center my-4">
+        <h2 class="display-6 fw-bold text-primary">📇 Dumela Client Manager</h2>
+        <p class="text-muted">Manage and view your client contacts easily</p>
+        <p class="text-muted"><small>Your User ID: <strong id="currentUserId">Loading...</strong></small></p>
+    </div>
+
+    <!-- 📊 Dashboard Summary -->
+    <div class="card dashboard-summary-card">
+        <div class="card-header bg-primary text-white">Dashboard Summary</div>
+        <div class="card-body">
+            <div class="row text-center">
+                <!-- Overall Total Clients Card -->
+                <div class="col-md-3">
+                    <div class="card border-primary mb-3 dashboard-card" id="overallTotalClientsCard">
+                        <div class="card-body">
+                            <h1 class="dashboard-card-icon">🌎</h1>
+                            <h5 class="card-title dashboard-card-title">Total Clients (All Lists)</h5>
+                            <p class="card-text"><strong id="countOverallTotalClients">0</strong> clients</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- New: Clients in Current List Card -->
+                <div class="col-md-3">
+                    <div class="card border-primary mb-3 dashboard-card" id="currentListClientsCard">
+                        <div class="card-body">
+                            <h1 class="dashboard-card-icon">📁</h1>
+                            <h5 class="card-title dashboard-card-title">Clients in Current List</h5>
+                            <p class="card-text"><strong id="countCurrentListClients">0</strong> clients</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Existing Cards (adjusted to col-md-3 for even spacing) -->
+                <div class="col-md-3">
+                    <div class="card border-success mb-3 dashboard-card" id="contactClientsCard">
+                        <div class="card-body">
+                            <h1 class="dashboard-card-icon">📞</h1>
+                            <h5 class="card-title dashboard-card-title">Contact Numbers</h5>
+                            <p class="card-text"><strong id="countContact">0</strong> clients</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-info mb-3 dashboard-card" id="idClientsCard">
+                        <div class="card-body">
+                            <h1 class="dashboard-card-icon">🆔</h1>
+                            <h5 class="card-title dashboard-card-title">ID Numbers</h5>
+                            <p class="card-text"><strong id="countID">0</strong> clients</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-warning mb-3 dashboard-card" id="bankClientsCard">
+                        <div class="card-body">
+                            <h1 class="dashboard-card-icon">🏦</h1>
+                            <h5 class="card-title dashboard-card-title">Bank Details</h5>
+                            <p class="card-text"><strong id="countBank">0</strong> clients</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-dark mb-3 dashboard-card" id="completedInfoCard">
+                        <div class="card-body">
+                            <h1 class="dashboard-card-icon">✅</h1>
+                            <h5 class="card-title dashboard-card-title">Completed Info</h5>
+                            <p class="card-text"><strong id="countCompleted">0</strong> clients</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Entry Form -->
+    <div class="card form-section">
+        <div class="card-header bg-primary text-white">Add/Edit Client</div>
+        <div class="card-body">
+            <form id="clientForm">
+                <input id="clientId" type="hidden"/>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Surname</label>
+                        <input class="form-control" id="surname" required="" type="text"/>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">First Names</label>
+                        <input class="form-control" id="name" required="" type="text"/>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Identity Number</label>
+                        <input class="form-control" id="idNumber" type="text" placeholder="e.g., 9012315000000"/>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Contact Number</label>
+                        <input class="form-control" id="contact" type="tel" placeholder="e.g., 0821234567"/>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Bank Name</label>
+                        <select class="form-select" id="bankSelect"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Account Number</label>
+                        <input class="form-control" id="accountNumber" type="text" placeholder="e.g., 1234567890"/>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="email">Email</label>
+                        <input class="form-control" id="email" placeholder="example@email.com" type="email"/>
+                    </div>
+                </div>
+                <div class="mt-3 d-flex justify-content-end">
+                    <button class="btn btn-success me-2" type="submit">Save Client</button>
+                    <button class="btn btn-secondary" id="cancelEdit" type="button">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Search and Actions -->
+    <div class="input-group mb-3">
+        <input class="form-control" id="searchInput" placeholder="Search clients by name, surname, ID, or contact..." type="text"/>
+        <button class="btn btn-outline-primary" id="searchBtn" type="button">Search</button>
+    </div>
+
+    <!-- Multiple List Tabs / Management -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <label class="form-label fw-bold me-2">📁 Current List:</label>
+            <select class="form-select d-inline-block w-auto me-2" id="listSelector" onchange="switchList()"></select>
+            <button class="btn btn-outline-primary btn-sm me-2" onclick="createNewList()">+ New List</button>
+            <button class="btn btn-outline-danger btn-sm" onclick="deleteCurrentList()">🗑 Delete List</button>
+        </div>
+    </div>
+
+    <!-- Client List -->
+    <div class="card">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <input id="listTitle" oninput="updateListTitle()" style="border:none; background:transparent; font-weight:bold; color:white; flex-grow:1;" value="Client List"/>
+            <div class="btn-group" role="group">
+                <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#settingsModal">⚙️ Settings</button>
+                <button class="btn btn-outline-light btn-sm" id="exportBtn">⬇️ Export to Excel</button>
+                <button class="btn btn-outline-light btn-sm" id="printBtn" onclick="printClientTable()" type="button">🖨️ Print List</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr id="clientTableHeader">
+                            <!-- Headers will be rendered dynamically here -->
+                        </tr>
+                    </thead>
+                    <tbody id="clientList">
+                        <!-- Client rows will be rendered here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Action Buttons (Export/Clear) -->
+    <div class="d-flex justify-content-end mt-3">
+        <button class="btn btn-danger me-2" id="clearDatabaseBtn">Clear All Clients in Current List</button>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-secondary text-white">
+                    <h5 class="modal-title" id="settingsModalLabel">⚙️ Settings</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Manage Banks</h5>
+                            <div class="input-group mb-3">
+                                <input class="form-control" id="newBank" placeholder="Add new bank name" type="text"/>
+                                <button class="btn btn-outline-primary" type="button" onclick="addBank()">Add Bank</button>
+                            </div>
+                            <ul class="list-group" id="bankList"></ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Database Security</h5>
+                            <div class="mb-3">
+                                <label for="setUsername" class="form-label">Set Username</label>
+                                <input type="text" class="form-control" id="setUsername" placeholder="Enter username">
+                            </div>
+                            <div class="mb-3">
+                                <label for="setPassword" class="form-label">Set Password</label>
+                                <input type="password" class="form-control" id="setPassword" placeholder="Enter password">
+                            </div>
+                            <button type="button" class="btn btn-primary" onclick="saveCredentials()">Save Credentials</button>
+                            <div class="mt-2 text-muted fst-italic">Note: Authentication is handled by Firebase. These fields are for local storage login, if enabled.</div>
+                        </div>
+                    </div>
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5>Manage Table Headers</h5>
+                            <p class="text-muted"><small>Customize the display names for your table columns.</small></p>
+                            <div id="headerRenameFields">
+                                <!-- Dynamic header rename inputs will go here -->
+                            </div>
+                            <button type="button" class="btn btn-success mt-3" onclick="saveCustomHeaders()">Save Custom Headers</button>
+                            <button type="button" class="btn btn-outline-secondary mt-3 ms-2" onclick="resetHeaders()">Reset to Default</button>
+                        </div>
+                    </div>
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5>UI Color Scheme</h5>
+                            <p class="text-muted"><small>Choose your preferred visual theme for the application.</small></p>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="colorScheme" id="themeDefault" value="default" checked>
+                                <label class="form-check-label" for="themeDefault">Default (Blue/Grey)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="colorScheme" id="themeGreenEarth" value="green-earth">
+                                <label class="form-check-label" for="themeGreenEarth">Green/Earth</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="colorScheme" id="themePurpleGold" value="purple-gold">
+                                <label class="form-check-label" for="themePurpleGold">Purple/Gold</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Paste from Excel Modal -->
+    <div aria-hidden="true" aria-labelledby="pasteExcelModalLabel" class="modal fade" id="pasteExcelModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="pasteExcelModalLabel">📋 Paste Excel Data</h5>
+                    <button aria-label="Close" class="btn-close btn-close-white" data-bs-dismiss="modal" type="button"></button>
+                </div>
+                <div class="modal-body">
+                    <p><small>Paste rows copied from Excel. The system will attempt to map columns automatically. Expected columns: Surname, First Names, Identity Nr, Contact Nr, Banking Details, Email.</small></p>
+                    <textarea class="form-control" id="pastedData" placeholder="Paste tab-separated Excel rows here..." rows="10"></textarea>
+                    <div class="alert alert-info mt-3" role="alert" id="pasteStatusMessage" style="display: none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-success" onclick="importPastedData()" type="button">Import Pasted Data</button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Excel Upload Section -->
+    <div class="card mt-4">
+        <div class="card-header bg-info text-white">Upload &amp; View Excel Data</div>
+        <div class="card-body">
+            <input accept=".xlsx,.xls" class="form-control mb-3" id="excelFile" type="file"/>
+            <select class="form-select mb-3" id="sheetSelector" style="display: none;"></select>
+            <div class="table-responsive" id="excelData"></div>
+            <div class="mt-2 text-muted fst-italic" id="excelStatus"></div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-primary" data-bs-target="#pasteExcelModal" data-bs-toggle="modal">📋 Paste from Excel</button>
+                <button class="btn btn-success" id="importExcelToClientList" style="display: none;">Import Uploaded Excel to Client List</button>
+                <button class="btn btn-outline-danger" id="clearExcelData" style="display: none;">Clear Excel Upload</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Single Client Duplicate Found Modal (from form submission) -->
+    <div class="modal fade" id="duplicateModal" tabindex="-1" aria-labelledby="duplicateModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="duplicateModalLabel">⚠️ Duplicate Client Detected</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>A client with a similar Identity Number or Contact Number already exists:</p>
+                    <div class="card bg-light mb-3">
+                        <div class="card-header">Existing Client</div>
+                        <div class="card-body" id="existingClientDetails"></div>
+                    </div>
+                    <div class="card bg-light">
+                        <div class="card-header">New Client Data</div>
+                        <div class="card-body" id="newClientDetails"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="forceAddDuplicate">Add As New (Allow Duplicate)</button>
+                    <button type="button" class="btn btn-warning" id="updateExistingClient">Update Existing Client</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel (Don't Add)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Import Duplicate Review Modal -->
+    <div class="modal fade" id="bulkImportDuplicateModal" tabindex="-1" aria-labelledby="bulkImportDuplicateModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="bulkImportDuplicateModalLabel">⚠️ Review Duplicates from Import</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>We found <strong id="duplicateCountSummary">0</strong> potential duplicates in your uploaded file. Please review and decide how to handle each:</p>
+
+                    <div class="mb-3">
+                        <label for="applyToAllAction" class="form-label">Apply action to all duplicates:</label>
+                        <select class="form-select" id="applyToAllAction">
+                            <option value="">-- Select Global Action --</option>
+                            <option value="skip">Skip All Duplicates</option>
+                            <option value="add">Add All As New</option>
+                            <option value="update">Update All Existing</option>
+                        </select>
+                        <button class="btn btn-sm btn-info mt-2" id="applyGlobalAction">Apply Global Action</button>
+                    </div>
+
+                    <div id="duplicateListContainer">
+                        <!-- Duplicates will be listed here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" id="confirmBulkImport">Import Non-Duplicates & Selected</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel Full Import</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Right-Click Context Menu -->
+    <ul id="customContextMenu">
+        <li data-action="edit">Edit Client</li>
+        <li data-action="delete">Delete Client</li>
+    </ul>
+
+    <!-- Custom Alert Modal -->
+    <div class="modal fade" id="customAlertModal" tabindex="-1" aria-labelledby="customAlertModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="customAlertModalLabel">Alert</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="customAlertModalBody">
+                    <!-- Alert message goes here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Modal -->
+    <div class="modal fade" id="customConfirmModal" tabindex="-1" aria-labelledby="customConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="customConfirmModalLabel">Confirm Action</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="customConfirmModalBody">
+                    <!-- Confirm message goes here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmProceedBtn">Proceed</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recognition for Angelo Neale -->
+    <div class="text-center mt-5 mb-3 text-muted">
+        <small>Database compiled by Angelo Neale</small>
+    </div>
+
+</div>
+
+<!-- Login Overlay (Now primarily for loading/error display during Firebase init) -->
+<div class="overlay" id="loginOverlay">
+    <div class="login-card">
+        <h2>Dumela Client Manager</h2>
+        <p id="loginOverlayMessage">Initializing application...</p>
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="text-center mt-4
+text-muted">
+            <small>Created by Angelo Neale</small>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div id="loadingOverlay"></div>
+<div id="loadingSpinner" class="spinner-border text-primary" role="status">
+    <span class="visually-hidden">Loading...</span>
+</div>
+
+<!-- Bootstrap Bundle JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- SheetJS (XLSX) Library -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- Firebase SDKs -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // --- Firebase Initialization and Global Variables ---
+    // Use direct access for variables provided by the Canvas environment,
+    // and provide fallback values for local file execution.
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id-local';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+        apiKey: "YOUR_API_KEY", // Replace with your actual Firebase API Key if running locally and want Firestore
+        authDomain: "YOUR_AUTH_DOMAIN",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_STORAGE_BUCKET",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+
+    let app;
+    let db;
+    let auth;
+    let userId = null;
+    let clientsCollectionRef;
+    let userSettingsDocRef;
+    let unsubscribeClients = null; // To store the unsubscribe function for the client listener
+
+    // --- Global Application State (now mostly derived from Firestore) ---
+    let clients = []; // Array to hold client objects for the current list
+    let currentListId = null; // Stored as ID in Firestore, not name
+    let listNamesMap = new Map(); // Map of listId -> listName
+    let banks = JSON.parse(localStorage.getItem('banks')) || ["ABSA", "FNB", "Standard Bank", "Capitec", "Nedbank", "Tyme Bank", "Bidvest", "Investec"];
+    let parsedExcelData = [];
+    let currentExcelFileName = '';
+    let potentialDuplicateClient = null;
+    let bulkDuplicatesToReview = [];
+    let selectedClientIdForContextMenu = null;
+    let isCompletedInfoFiltered = false;
+
+    // Default headers for the client table. These are the "keys" used internally.
+    const defaultHeaderKeys = ["No", "Surname", "First Names", "Identity Nr", "Contact Nr", "Banking Details", "Email"];
+
+    // --- Custom Modals for Alerts and Confirms ---
+    let confirmCallback = null;
+    let confirmCancelCallback = null;
+
+    function showLoadingSpinner() {
+        document.getElementById('loadingOverlay').style.display = 'block';
+        document.getElementById('loadingSpinner').style.display = 'block';
+    }
+
+    function hideLoadingSpinner() {
+        document.getElementById('loadingOverlay').style.display = 'none';
+        document.getElementById('loadingSpinner').style.display = 'none';
+    }
+
+    function showAlert(message, title = 'Alert') {
+        document.getElementById('customAlertModalLabel').textContent = title;
+        document.getElementById('customAlertModalBody').textContent = message;
+        const alertModal = new bootstrap.Modal(document.getElementById('customAlertModal'));
+        alertModal.show();
+    }
+
+    function showConfirm(message, title = 'Confirm Action', confirmActionCallback, cancelActionCallback = null, allowInput = false) {
+        document.getElementById('customConfirmModalLabel').textContent = title;
+        document.getElementById('customConfirmModalBody').innerHTML = `<p>${message}</p>`;
+
+        let inputElement = null;
+        if (allowInput) {
+            inputElement = document.createElement('input');
+            inputElement.type = 'text';
+            inputElement.classList.add('form-control', 'mt-2');
+            inputElement.placeholder = 'Enter list name...';
+            document.getElementById('customConfirmModalBody').appendChild(inputElement);
+        }
+
+        confirmCallback = () => {
+            const result = allowInput ? inputElement.value.trim() : true;
+            confirmActionCallback(result);
+        };
+        confirmCancelCallback = cancelActionCallback;
+
+        const confirmModal = new bootstrap.Modal(document.getElementById('customConfirmModal'));
+        confirmModal.show();
+        if (inputElement) {
+            inputElement.focus();
+        }
+    }
+
+    document.getElementById('confirmProceedBtn').addEventListener('click', () => {
+        if (confirmCallback) {
+            confirmCallback();
+        }
+        confirmCallback = null;
+        confirmCancelCallback = null;
+    });
+
+    document.getElementById('customConfirmModal').addEventListener('hide.bs.modal', function () {
+        if (confirmCancelCallback && confirmCallback !== null) {
+            confirmCancelCallback();
+        }
+        confirmCallback = null;
+        confirmCancelCallback = null;
+    });
+
+    // --- Utility Functions ---
+    function generateUniqueId() {
+        return Date.now().toString() + Math.random().toString(36).substring(2, 6);
+    }
+
+    // --- Firestore Operations ---
+    async function saveClientToFirestore(clientData) {
+        showLoadingSpinner();
+        try {
+            if (db && userId) { // Check if db and userId are initialized
+                if (clientData.id) {
+                    // Update existing client
+                    const clientDocRef = doc(db, `artifacts/${appId}/users/${userId}/clients`, clientData.id);
+                    await setDoc(clientDocRef, clientData, { merge: true });
+                    showAlert(`Client "${clientData.name} ${clientData.surname}" updated successfully.`);
+                } else {
+                    // Add new client
+                    const newDocRef = await addDoc(collection(db, `artifacts/${appId}/users/${userId}/clients`), clientData);
+                    clientData.id = newDocRef.id; // Assign the Firestore generated ID
+                    showAlert(`Client "${clientData.name} ${clientData.surname}" added successfully.`);
+                }
+            } else {
+                showAlert("Firestore not initialized. Data will not be saved to the cloud.", "Warning");
+                console.warn("Firestore not initialized. Data will not be saved to the cloud.");
+                // Fallback to local storage if Firestore is not available
+                // This is a simplified fallback; a full local storage implementation would be more complex.
+                clients.push(clientData);
+                renderClients();
+                updateDashboardSummary();
+            }
+        } catch (e) {
+            console.error("Error saving client: ", e);
+            showAlert("Error saving client. Please try again.");
+        } finally {
+            hideLoadingSpinner();
+        }
+    }
+
+    async function deleteClientFromFirestore(clientId) {
+        showLoadingSpinner();
+        try {
+            if (db && userId) { // Check if db and userId are initialized
+                await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/clients`, clientId));
+                showAlert("Client deleted.");
+            } else {
+                showAlert("Firestore not initialized. Data will not be deleted from the cloud.", "Warning");
+                console.warn("Firestore not initialized. Data will not be deleted from the cloud.");
+                // Fallback to local storage deletion
+                clients = clients.filter(c => c.id !== clientId);
+                renderClients();
+                updateDashboardSummary();
+            }
+        } catch (e) {
+            console.error("Error deleting client: ", e);
+            showAlert("Error deleting client. Please try again.");
+        } finally {
+            hideLoadingSpinner();
+        }
+    }
+
+    async function saveUserSettings(settings) {
+        showLoadingSpinner();
+        try {
+            if (db && userId) { // Check if db and userId are initialized
+                await setDoc(userSettingsDocRef, settings, { merge: true });
+            } else {
+                showAlert("Firestore not initialized. User settings will not be saved to the cloud.", "Warning");
+                console.warn("Firestore not initialized. User settings will not be saved to the cloud.");
+                // Fallback for local settings (e.g., listNamesMap, currentListId)
+                // This is a simplified fallback; a full local storage implementation would be more complex.
+                if (settings.listNames) {
+                    listNamesMap.clear();
+                    settings.listNames.forEach(item => listNamesMap.set(item.id, item.name));
+                }
+                if (settings.currentListId) {
+                    currentListId = settings.currentListId;
+                }
+            }
+        } catch (e) {
+            console.error("Error saving user settings: ", e);
+            showAlert("Error saving user settings. Please try again.");
+        } finally {
+            hideLoadingSpinner();
+        }
+    }
+
+    async function loadUserSettings() {
+        showLoadingSpinner();
+        try {
+            if (db && userId) { // Check if db and userId are initialized
+                const docSnap = await getDoc(userSettingsDocRef);
+                if (docSnap.exists()) {
+                    const settings = docSnap.data();
+                    listNamesMap.clear();
+                    (settings.listNames || []).forEach(item => listNamesMap.set(item.id, item.name));
+                    currentListId = settings.currentListId || (listNamesMap.size > 0 ? listNamesMap.keys().next().value : null);
+                    if (!currentListId && listNamesMap.size === 0) {
+                        // Initialize with Default List if no settings exist
+                        const defaultListId = generateUniqueId();
+                        listNamesMap.set(defaultListId, "Default List");
+                        currentListId = defaultListId;
+                        await saveUserSettings({
+                            listNames: [{ id: defaultListId, name: "Default List" }],
+                            currentListId: defaultListId,
+                            customHeaders_DefaultList: defaultHeaderKeys // Save default headers for default list
+                        });
+                    }
+                } else {
+                    // No settings found, create default
+                    const defaultListId = generateUniqueId();
+                    listNamesMap.set(defaultListId, "Default List");
+                    currentListId = defaultListId;
+                    await saveUserSettings({
+                        listNames: [{ id: defaultListId, name: "Default List" }],
+                        currentListId: defaultListId,
+                        customHeaders_DefaultList: defaultHeaderKeys
+                    });
+                }
+            } else {
+                showAlert("Firestore not initialized. Loading default settings.", "Warning");
+                console.warn("Firestore not initialized. Loading default settings.");
+                // Fallback to local default settings
+                if (listNamesMap.size === 0) {
+                    const defaultListId = 'default-list'; // A fixed ID for local default
+                    listNamesMap.set(defaultListId, "Default List");
+                    currentListId = defaultListId;
+                }
+            }
+            populateListSelector();
+            loadClientsForCurrentList(); // Attach new listener based on currentListId
+        } catch (e) {
+            console.error("Error loading user settings: ", e);
+            showAlert("Error loading user settings. Please try again.");
+        } finally {
+            hideLoadingSpinner();
+        }
+    }
+
+    function loadClientsForCurrentList() {
+        if (unsubscribeClients) {
+            unsubscribeClients(); // Unsubscribe from previous listener
+        }
+
+        if (!userId || !currentListId || !db) { // Check if db is initialized
+            clients = [];
+            renderClients();
+            updateDashboardSummary();
+            updateOverallClientSummary();
+            console.warn("Firestore not initialized or user not authenticated. Displaying empty client list.");
+            return;
+        }
+
+        showLoadingSpinner();
+        const q = query(collection(db, `artifacts/${appId}/users/${userId}/clients`), where("listId", "==", currentListId));
+        unsubscribeClients = onSnapshot(q, (snapshot) => {
+            clients = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            clients.sort((a, b) => {
+                const surnameCompare = (a.surname || "").localeCompare(b.surname || "");
+                if (surnameCompare !== 0) return surnameCompare;
+                return (a.name || "").localeCompare(b.name || "");
+            });
+            renderClients();
+            updateDashboardSummary();
+            updateOverallClientSummary();
+            hideLoadingSpinner();
+        }, (error) => {
+            console.error("Error listening to clients: ", error);
+            showAlert("Error loading clients. Please try again.");
+            hideLoadingSpinner();
+        });
+    }
+
+    // --- Dashboard Summary ---
+    function updateDashboardSummary() {
+        const total = clients.length;
+        const contactCount = clients.filter(c => c.contact && c.contact.trim().length >= 8).length;
+        const idCount = clients.filter(c => c.idNumber && c.idNumber.trim().length === 13 && /^\d+$/.test(c.idNumber.trim())).length;
+        const bankCount = clients.filter(c => c.bankDetails && c.bankDetails.trim() !== "").length;
+
+        const completedInfoCount = clients.filter(c =>
+            (c.surname && c.surname.trim() !== "") &&
+            (c.name && c.name.trim() !== "") &&
+            (c.idNumber && c.idNumber.trim().length === 13 && /^\d+$/.test(c.idNumber.trim())) &&
+            (c.contact && c.contact.trim().length >= 8) &&
+            (c.bankDetails && c.bankDetails.trim() !== "")
+        ).length;
+
+        document.getElementById("countCurrentListClients").textContent = total;
+        document.getElementById("countContact").textContent = contactCount;
+        document.getElementById("countID").textContent = idCount;
+        document.getElementById("countBank").textContent = bankCount;
+        document.getElementById("countCompleted").textContent = completedInfoCount;
+    }
+
+    async function updateOverallClientSummary() {
+        let overallTotal = 0;
+        try {
+            // Ensure userId and db are available before attempting to fetch data
+            if (userId && db) {
+                const allClientsSnapshot = await getDocs(collection(db, `artifacts/${appId}/users/${userId}/clients`));
+                overallTotal = allClientsSnapshot.size;
+            } else {
+                console.warn("Firestore not initialized or user not authenticated. Cannot fetch overall client count.");
+            }
+        } catch (e) {
+            console.error("Error fetching overall client count: ", e);
+        }
+        document.getElementById("countOverallTotalClients").textContent = overallTotal;
+    }
+
+    // --- Client Form Management ---
+    document.getElementById('clientForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const clientId = document.getElementById('clientId').value;
+        const newClientData = {
+            name: document.getElementById('name').value.trim(),
+            surname: document.getElementById('surname').value.trim(),
+            idNumber: formatIdNumber(document.getElementById('idNumber').value),
+            contact: formatContactNumber(document.getElementById('contact').value),
+            bankDetails: `${formatAccountNumber(document.getElementById('accountNumber').value)} ${document.getElementById('bankSelect').value || ''}`.trim(),
+            email: document.getElementById('email').value.trim(),
+            listId: currentListId, // Associate with current list
+            attachments: []
+        };
+
+        if (clientId) {
+            // Existing client, update directly
+            newClientData.id = clientId; // Ensure ID is part of the data for updateDoc
+            await saveClientToFirestore(newClientData);
+        } else {
+            // New client, check for duplicates
+            const existingClient = isDuplicate(newClientData);
+            if (existingClient) {
+                potentialDuplicateClient = { new: newClientData, existing: existingClient };
+                showDuplicateModal(newClientData, existingClient);
+            } else {
+                await saveClientToFirestore(newClientData);
+            }
+        }
+        document.getElementById('clientForm').reset();
+        document.getElementById('clientId').value = '';
+    });
+
+    document.getElementById('cancelEdit').addEventListener('click', () => {
+        document.getElementById('clientForm').reset();
+        document.getElementById('clientId').value = '';
+    });
+
+    async function populateForm(client) {
+        document.getElementById('clientId').value = client.id;
+        document.getElementById('name').value = client.name;
+        document.getElementById('surname').value = client.surname;
+        document.getElementById('idNumber').value = client.idNumber;
+        document.getElementById('contact').value = client.contact;
+
+        const bankDetails = client.bankDetails || "";
+        const parts = bankDetails.split(' ');
+        let accountNumber = '';
+        let bankName = '';
+
+        if (parts.length > 0) {
+            if (/^\d+$/.test(parts[0]) && parts[0].length >= 5) {
+                accountNumber = parts[0];
+                bankName = parts.slice(1).join(' ').trim();
+            } else {
+                bankName = parts.join(' ').trim();
+            }
+        }
+
+        document.getElementById('accountNumber').value = accountNumber;
+        if (banks.includes(bankName)) {
+            document.getElementById('bankSelect').value = bankName;
+        } else if (bankName) {
+            if (!banks.includes(bankName)) {
+                banks.push(bankName);
+                localStorage.setItem('banks', JSON.stringify(banks));
+                populateBankOptions();
+            }
+            document.getElementById('bankSelect').value = bankName;
+        } else {
+             document.getElementById('bankSelect').value = '';
+        }
+        document.getElementById('email').value = client.email;
+    }
+
+    // --- Client List Rendering and Filtering ---
+    function renderClients(filtered = clients) {
+        const currentListName = listNamesMap.get(currentListId) || "Client List";
+        document.getElementById("listTitle").value = currentListName;
+
+        const customHeaders = JSON.parse(localStorage.getItem(`customHeaders_${currentListId}`)) || defaultHeaderKeys;
+        const tbody = document.getElementById('clientList');
+        const theadRow = document.getElementById('clientTableHeader');
+
+        theadRow.innerHTML = customHeaders.map(header => `<th>${header}</th>`).join('');
+
+        tbody.innerHTML = filtered.map(client => {
+            const originalIndex = clients.indexOf(client);
+            const displayNo = originalIndex !== -1 ? originalIndex + 1 : '-';
+
+            return `
+            <tr class="${client.isDuplicateFlagged ? 'duplicate-row' : ''}" data-client-id="${client.id}">
+                <td>${displayNo}</td>
+                <td>${client.surname}</td>
+                <td>${client.name}</td>
+                <td>${client.idNumber}</td>
+                <td>${client.contact}</td>
+                <td>${client.bankDetails}</td>
+                <td>${client.email}</td>
+            </tr>`;
+        }).join('');
+
+        document.querySelectorAll('#clientList tr').forEach(row => {
+            row.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                selectedClientIdForContextMenu = this.dataset.clientId;
+                const contextMenu = document.getElementById('customContextMenu');
+
+                contextMenu.style.display = 'block';
+                contextMenu.style.left = e.pageX + 'px';
+                contextMenu.style.top = e.pageY + 'px';
+            });
+        });
+    }
+
+    document.addEventListener('click', function() {
+        document.getElementById('customContextMenu').style.display = 'none';
+    });
+
+    document.getElementById('customContextMenu').addEventListener('click', async function(e) {
+        const action = e.target.dataset.action;
+        if (action && selectedClientIdForContextMenu) {
+            const client = clients.find(c => c.id === selectedClientIdForContextMenu);
+            if (client) {
+                if (action === 'edit') {
+                    populateForm(client);
+                } else if (action === 'delete') {
+                    await deleteClientFromFirestore(client.id);
+                }
+            }
+        }
+        document.getElementById('customContextMenu').style.display = 'none';
+    });
+
+    document.getElementById('searchInput').addEventListener('input', filterClients);
+    document.getElementById('searchBtn').addEventListener('click', filterClients);
+
+    function filterClients() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        if (isCompletedInfoFiltered && searchTerm !== 'filter: completed info') {
+            isCompletedInfoFiltered = false;
+        }
+
+        const filtered = clients.filter(client =>
+            (client.name || "").toLowerCase().includes(searchTerm) ||
+            (client.surname || "").toLowerCase().includes(searchTerm) ||
+            (client.idNumber || "").toLowerCase().includes(searchTerm) ||
+            (client.contact || "").toLowerCase().includes(searchTerm) ||
+            (client.email || "").toLowerCase().includes(searchTerm) ||
+            (client.bankDetails || "").toLowerCase().includes(searchTerm)
+        );
+        renderClients(filtered);
+    }
+
+    // --- Multi-List Management ---
+    function populateListSelector() {
+        const selector = document.getElementById("listSelector");
+        selector.innerHTML = ''; // Clear existing options
+        listNamesMap.forEach((name, id) => {
+            const option = document.createElement('option');
+            option.value = id;
+            option.textContent = name;
+            if (id === currentListId) {
+                option.selected = true;
+            }
+            selector.appendChild(option);
+        });
+        document.getElementById("listTitle").value = listNamesMap.get(currentListId) || "Client List";
+    }
+
+    async function switchList() {
+        currentListId = document.getElementById("listSelector").value;
+        await saveUserSettings({ currentListId: currentListId });
+        loadClientsForCurrentList();
+        loadAndRenderCustomHeaders(); // Load headers for the new list
+    }
+
+    async function createNewList() {
+        showConfirm("Enter a name for the new list:", "Create New List", async (name) => {
+            if (!name) {
+                showAlert("List name cannot be empty.");
+                return;
+            }
+            const existingList = Array.from(listNamesMap.values()).some(listName => listName.toLowerCase() === name.toLowerCase());
+            if (existingList) {
+                showAlert("List name already exists.");
+                return;
+            }
+
+            const newListId = generateUniqueId();
+            listNamesMap.set(newListId, name);
+            currentListId = newListId;
+
+            const updatedListNames = Array.from(listNamesMap).map(([id, name]) => ({ id, name }));
+            await saveUserSettings({
+                listNames: updatedListNames,
+                currentListId: currentListId,
+                [`customHeaders_${currentListId}`]: defaultHeaderKeys // Initialize with default headers
+            });
+            populateListSelector();
+            loadClientsForCurrentList();
+            loadAndRenderCustomHeaders(); // Load headers for the new list
+            showAlert(`New list "${name}" created and switched to.`);
+        }, null, true);
+    }
+
+    async function deleteCurrentList() {
+        const listName = listNamesMap.get(currentListId);
+        if (listName === "Default List") {
+            showAlert("You cannot delete the Default List.");
+            return;
+        }
+        showConfirm(`Are you sure you want to delete the list "${listName}" and all its clients? This cannot be undone.`, "Confirm Deletion", async () => {
+            showLoadingSpinner();
+            try {
+                if (db && userId) { // Check if db and userId are initialized
+                    // Delete all clients associated with this list
+                    const clientsToDeleteQuery = query(collection(db, `artifacts/${appId}/users/${userId}/clients`), where("listId", "==", currentListId));
+                    const snapshot = await getDocs(clientsToDeleteQuery);
+                    const batch = writeBatch(db);
+                    snapshot.docs.forEach(doc => {
+                        batch.delete(doc.ref);
+                    });
+                    await batch.commit();
+
+                    // Remove the list from user settings
+                    listNamesMap.delete(currentListId);
+                    const updatedListNames = Array.from(listNamesMap).map(([id, name]) => ({ id, name }));
+                    
+                    // Remove custom headers for the deleted list
+                    const userSettingsSnap = await getDoc(userSettingsDocRef);
+                    const userSettingsData = userSettingsSnap.data() || {};
+                    delete userSettingsData[`customHeaders_${currentListId}`];
+
+                    // Set current list to default if it was deleted
+                    if (!listNamesMap.has(currentListId)) {
+                        currentListId = listNamesMap.keys().next().value || null; // Fallback to first available or null
+                        if (!currentListId) { // If no lists left, recreate default
+                            const defaultListId = generateUniqueId();
+                            listNamesMap.set(defaultListId, "Default List");
+                            updatedListNames.push({ id: defaultListId, name: "Default List" });
+                            currentListId = defaultListId;
+                            userSettingsData[`customHeaders_${defaultListId}`] = defaultHeaderKeys;
+                        }
+                    }
+
+                    await setDoc(userSettingsDocRef, {
+                        listNames: updatedListNames,
+                        currentListId: currentListId,
+                        ...userSettingsData // Include updated custom headers
+                    }, { merge: true });
+
+                    populateListSelector();
+                    loadClientsForCurrentList();
+                    loadAndRenderCustomHeaders(); // Load headers for the new current list
+                    showAlert(`List "${listName}" and its clients deleted.`);
+                } else {
+                    showAlert("Firestore not initialized. Cannot delete list from cloud.", "Warning");
+                    console.warn("Firestore not initialized. Cannot delete list from cloud.");
+                    // In a local-only scenario, you'd handle list deletion from local storage
+                    // For now, it will just show the warning.
+                }
+            } catch (e) {
+                console.error("Error deleting list and clients: ", e);
+                showAlert("Error deleting list. Please try again.");
+            } finally {
+                hideLoadingSpinner();
+            }
+        });
+    }
+
+    // --- Dynamic Bank Settings ---
+    function populateBankOptions() {
+        const bankSelect = document.getElementById("bankSelect");
+        bankSelect.innerHTML = '<option value="">Select Bank</option>' + banks.map(b => `<option value="${b}">${b}</option>`).join('');
+        updateBankSettingsList();
+    }
+
+    function addBank() {
+        const input = document.getElementById("newBank");
+        const value = input.value.trim();
+        if (value && !banks.includes(value)) {
+            banks.push(value);
+            localStorage.setItem('banks', JSON.stringify(banks));
+            populateBankOptions();
+        } else if (value) {
+            showAlert("Bank already exists or invalid name.");
+        }
+        input.value = "";
+    }
+
+    function updateBankSettingsList() {
+        const bankList = document.getElementById("bankList");
+        bankList.innerHTML = banks.map(b => `
+            <li class="list-group-item">
+                ${b}
+                <button class="btn btn-sm btn-danger" onclick="removeBank('${b}')">Remove</button>
+            </li>`).join('');
+    }
+
+    function removeBank(bank) {
+        showConfirm(`Are you sure you want to remove "${bank}" from the bank list?`, "Confirm Removal", () => {
+            banks = banks.filter(b => b !== bank);
+            localStorage.setItem('banks', JSON.stringify(banks));
+            populateBankOptions();
+        });
+    }
+
+    // --- Custom Header Management ---
+    async function loadAndRenderCustomHeaders() {
+        if (!userId || !currentListId) return; // Allow to proceed if userId is null for local testing
+        showLoadingSpinner();
+        try {
+            let customHeaders = defaultHeaderKeys;
+            if (db && userId) { // Only try to load from Firestore if initialized
+                const docSnap = await getDoc(userSettingsDocRef);
+                const userSettings = docSnap.exists() ? docSnap.data() : {};
+                customHeaders = userSettings[`customHeaders_${currentListId}`] || defaultHeaderKeys;
+            } else {
+                // Fallback for local storage headers if Firestore is not available
+                customHeaders = JSON.parse(localStorage.getItem(`customHeaders_${currentListId}`)) || defaultHeaderKeys;
+            }
+
+            const headerRenameFields = document.getElementById('headerRenameFields');
+            headerRenameFields.innerHTML = '';
+
+            customHeaders.forEach((header, index) => {
+                if (header === "No") return;
+
+                const div = document.createElement('div');
+                div.classList.add('mb-2');
+                div.innerHTML = `
+                    <label for="header-${index}" class="form-label">${header}</label>
+                    <input type="text" class="form-control" id="header-${index}" value="${header}" data-original-index="${index}">
+                `;
+                headerRenameFields.appendChild(div);
+            });
+        } catch (e) {
+            console.error("Error loading custom headers: ", e);
+            showAlert("Error loading custom headers. Please try again.");
+        } finally {
+            hideLoadingSpinner();
+        }
+    }
+
+    async function saveCustomHeaders() {
+        if (!userId || !currentListId) { // Allow to proceed if userId is null for local testing
+            showAlert("Firestore not initialized. Headers will only be saved locally.", "Warning");
+            console.warn("Firestore not initialized. Headers will only be saved locally.");
+        }
+        const headerRenameFields = document.getElementById('headerRenameFields');
+        const inputs = headerRenameFields.querySelectorAll('input[type="text"]');
+        
+        let newCustomHeaders = JSON.parse(JSON.stringify(defaultHeaderKeys));
+
+        inputs.forEach(input => {
+            const originalIndex = parseInt(input.dataset.originalIndex, 10);
+            const newValue = input.value.trim();
+            if (newValue) {
+                newCustomHeaders[originalIndex] = newValue;
+            } else {
+                newCustomHeaders[originalIndex] = defaultHeaderKeys[originalIndex];
+            }
+        });
+
+        showLoadingSpinner();
+        try {
+            if (db && userId) { // Only try to save to Firestore if initialized
+                await setDoc(userSettingsDocRef, { [`customHeaders_${currentListId}`]: newCustomHeaders }, { merge: true });
+            }
+            localStorage.setItem(`customHeaders_${currentListId}`, JSON.stringify(newCustomHeaders)); // Always save locally
+            renderClients();
+            showAlert('Table headers saved successfully!');
+        } catch (e) {
+            console.error("Error saving custom headers: ", e);
+            showAlert("Error saving custom headers. Please try again.");
+        } finally {
+            hideLoadingSpinner();
+        }
+    }
+
+    async function resetHeaders() {
+        if (!userId || !currentListId) { // Allow to proceed if userId is null for local testing
+            showAlert("Firestore not initialized. Headers will only be reset locally.", "Warning");
+            console.warn("Firestore not initialized. Headers will only be reset locally.");
+        }
+        showConfirm("Are you sure you want to reset table headers to their default names?", "Confirm Reset", async () => {
+            showLoadingSpinner();
+            try {
+                if (db && userId) { // Only try to delete from Firestore if initialized
+                    const userSettingsSnap = await getDoc(userSettingsDocRef);
+                    const userSettingsData = userSettingsSnap.data() || {};
+                    delete userSettingsData[`customHeaders_${currentListId}`];
+                    await setDoc(userSettingsDocRef, userSettingsData, { merge: true });
+                }
+                localStorage.removeItem(`customHeaders_${currentListId}`); // Always remove local copy
+                loadAndRenderCustomHeaders();
+                renderClients();
+                showAlert('Table headers reset to default.');
+            } catch (e) {
+                console.error("Error resetting headers: ", e);
+                showAlert("Error resetting headers. Please try again.");
+            } finally {
+                hideLoadingSpinner();
+            }
+        });
+    }
+
+    // --- Excel Import/Export Functions ---
+    function handleExcelExport() {
+        const formattedClients = clients.map((client, index) => ({
+            "No": index + 1,
+            "Surname": client.surname,
+            "First Names": client.name,
+            "Identity Nr": client.idNumber,
+            "Contact Nr": client.contact,
+            "Banking Details": client.bankDetails,
+            "Email": client.email
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(formattedClients, {
+            header: ["No", "Surname", "First Names", "Identity Nr", "Contact Nr", "Banking Details", "Email"]
+        });
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Clients");
+        // Ensure XLSX.writeFile is available before calling it
+        if (typeof XLSX.writeFile === 'function') {
+            XLSX.writeFile(workbook, `${listNamesMap.get(currentListId).replace(/\s+/g, "_")}_Client_List.xlsx`);
+        } else {
+            showAlert("Excel export functionality is not available. Please ensure the SheetJS library is loaded correctly.", "Export Error");
+            console.error("XLSX.writeFile is not a function. SheetJS library might not be loaded correctly.");
+        }
+    }
+
+    document.getElementById("excelFile").addEventListener("change", function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        currentExcelFileName = file.name;
+        document.getElementById("excelStatus").textContent = `File loaded: ${file.name}`;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: "array" });
+
+            const sheetSelector = document.getElementById("sheetSelector");
+            sheetSelector.innerHTML = '';
+            workbook.SheetNames.forEach((sheetName) => {
+                const option = document.createElement("option");
+                option.value = sheetName;
+                option.textContent = sheetName;
+                sheetSelector.appendChild(option);
+            });
+            sheetSelector.style.display = 'block';
+
+            sheetSelector.onchange = function () {
+                renderExcelSheetPreview(workbook, sheetSelector.value);
+            };
+
+            renderExcelSheetPreview(workbook, workbook.SheetNames[0]);
+            document.getElementById("importExcelToClientList").style.display = "inline-block";
+            document.getElementById("clearExcelData").style.display = "inline-block";
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    function renderExcelSheetPreview(workbook, sheetName) {
+        const sheet = workbook.Sheets[sheetName];
+        const html = XLSX.utils.sheet_to_html(sheet, { editable: false });
+        document.getElementById("excelData").innerHTML = html;
+        parsedExcelData = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
+    }
+
+    document.getElementById("importExcelToClientList").addEventListener("click", async function () {
+        if (!parsedExcelData.length) {
+            showAlert("No data to import from the uploaded Excel file.");
+            return;
+        }
+
+        const newClientsFromExcel = [];
+        bulkDuplicatesToReview = [];
+
+        const headerMap = {
+            "surname": "surname", "first names": "name", "name": "name",
+            "identity nr": "idNumber", "id": "idNumber", "id number": "idNumber",
+            "contact nr": "contact", "contact number": "contact", "contact": "contact",
+            "banking details": "bankDetails", "bank details": "bankDetails", "email": "email"
+        };
+
+        const excelHeaders = parsedExcelData.length > 0 ? Object.keys(parsedExcelData[0]) : [];
+        const normalizedHeaders = {};
+        excelHeaders.forEach(header => {
+            const lowerHeader = header.toLowerCase().trim();
+            let matchedKey = null;
+            for (const expectedHeader in headerMap) {
+                if (lowerHeader.includes(expectedHeader)) {
+                    matchedKey = headerMap[expectedHeader];
+                    break;
+                }
+            }
+            normalizedHeaders[header] = matchedKey || lowerHeader.replace(/\s+/g, '');
+        });
+
+        parsedExcelData.forEach(row => {
+            const client = {
+                id: generateUniqueId(),
+                name: "", surname: "", idNumber: "", contact: "", bankDetails: "", email: "",
+                listId: currentListId, // Assign to current list
+                action: "add"
+            };
+
+            for (const excelHeader in row) {
+                const clientKey = normalizedHeaders[excelHeader];
+                if (clientKey && client.hasOwnProperty(clientKey)) {
+                    client[clientKey] = String(row[excelHeader]).trim();
+                }
+            }
+
+            client.idNumber = formatIdNumber(client.idNumber);
+            client.contact = formatContactNumber(client.contact);
+            client.bankDetails = formatBankDetails(client.bankDetails);
+            client.email = client.email || "";
+            client.name = client.name || "";
+            client.surname = client.surname || "";
+
+            const existing = isDuplicate(client);
+            if (existing) {
+                bulkDuplicatesToReview.push({
+                    newClient: client,
+                    existingClient: existing,
+                    originalExcelRow: row,
+                    action: "skip"
+                });
+            } else {
+                newClientsFromExcel.push(client);
+            }
+        });
+
+        showLoadingSpinner();
+        try {
+            if (db && userId) { // Only attempt Firestore batch write if initialized
+                const batch = writeBatch(db);
+                newClientsFromExcel.forEach(client => {
+                    const newDocRef = doc(collection(db, `artifacts/${appId}/users/${userId}/clients`));
+                    client.id = newDocRef.id; // Assign Firestore ID before setting
+                    batch.set(newDocRef, client);
+                });
+                await batch.commit();
+            } else {
+                showAlert("Firestore not initialized. Data will not be imported to the cloud.", "Warning");
+                console.warn("Firestore not initialized. Data will not be imported to the cloud.");
+                // Fallback to adding to local 'clients' array
+                clients = clients.concat(newClientsFromExcel);
+                renderClients();
+                updateDashboardSummary();
+            }
+
+            if (bulkDuplicatesToReview.length > 0) {
+                showBulkImportDuplicateModal(bulkDuplicatesToReview);
+            } else if (newClientsFromExcel.length > 0) {
+                showAlert(`${newClientsFromExcel.length} client(s) imported successfully (no duplicates found).`);
+            } else {
+                showAlert("No new valid clients to import from the Excel file (or all were skipped).");
+            }
+        } catch (e) {
+            console.error("Error during bulk import: ", e);
+            showAlert("Error during bulk import. Please try again.");
+        } finally {
+            hideLoadingSpinner();
+            clearExcelUploadSection();
+        }
+    });
+
+    document.getElementById("clearExcelData").addEventListener("click", function () {
+        showConfirm("Are you sure you want to clear the current Excel upload and start over?", "Confirm Clear", () => {
+            clearExcelUploadSection();
+            document.getElementById("excelStatus").textContent = "Uploaded Excel file cleared.";
+        });
+    });
+
+    function clearExcelUploadSection() {
+        document.getElementById("excelFile").value = "";
+        document.getElementById("sheetSelector").innerHTML = "";
+        document.getElementById("sheetSelector").style.display = "none";
+        document.getElementById("excelData").innerHTML = "";
+        document.getElementById("importExcelToClientList").style.display = "none";
+        document.getElementById("clearExcelData").style.display = "none";
+        parsedExcelData = [];
+        currentExcelFileName = '';
+        bulkDuplicatesToReview = [];
+    }
+
+    // --- Paste from Excel Modal Import ---
+    async function importPastedData() {
+        const text = document.getElementById("pastedData").value.trim();
+        if (!text) {
+            showAlert("Paste some data first.");
+            return;
+        }
+
+        const lines = text.split("\n").filter(line => line.trim() !== "");
+        const newClientsFromPaste = [];
+        const pasteDuplicatesFound = [];
+
+        for (let line of lines) {
+            let cells = line.split('\t');
+            if (cells.length === 1) cells = line.split(',');
+            if (cells.length === 1) cells = line.split(/\s+/);
+
+            while (cells.length < 6) cells.push("");
+
+            const [surname, name, idNumber, contact, bankDetails, email = ""] = cells.map(c => c.trim());
+
+            const client = {
+                id: generateUniqueId(),
+                surname: surname || "", name: name || "",
+                idNumber: formatIdNumber(idNumber),
+                contact: formatContactNumber(contact),
+                bankDetails: formatBankDetails(bankDetails),
+                email: email,
+                listId: currentListId
+            };
+
+            const existing = isDuplicate(client);
+            if (existing) {
+                pasteDuplicatesFound.push({ newClient: client, existingClient: existing });
+            } else {
+                newClientsFromPaste.push(client);
+            }
+        }
+
+        if (pasteDuplicatesFound.length > 0) {
+             showConfirm(
+                `${pasteDuplicatesFound.length} potential duplicate(s) found in pasted data. \n` +
+                "Do you want to import only the non-duplicate clients? \n" +
+                "(You can manually handle duplicates or update existing clients later).", "Duplicates Found",
+                async () => {
+                    showLoadingSpinner();
+                    try {
+                        if (db && userId) { // Only attempt Firestore batch write if initialized
+                            const batch = writeBatch(db);
+                            newClientsFromPaste.forEach(client => {
+                                const newDocRef = doc(collection(db, `artifacts/${appId}/users/${userId}/clients`));
+                                client.id = newDocRef.id;
+                                batch.set(newDocRef, client);
+                            });
+                            await batch.commit();
+                        } else {
+                            showAlert("Firestore not initialized. Data will not be imported to the cloud.", "Warning");
+                            console.warn("Firestore not initialized. Data will not be imported to the cloud.");
+                            // Fallback to adding to local 'clients' array
+                            clients = clients.concat(newClientsFromPaste);
+                            renderClients();
+                            updateDashboardSummary();
+                        }
+                        showAlert(`${newClientsFromPaste.length} client(s) pasted and added. ${pasteDuplicatesFound.length} duplicate(s) skipped.`);
+                    } catch (e) {
+                        console.error("Error during pasted data import: ", e);
+                        showAlert("Error during pasted data import. Please try again.");
+                    } finally {
+                        hideLoadingSpinner();
+                        document.getElementById("pastedData").value = "";
+                        bootstrap.Modal.getInstance(document.getElementById("pasteExcelModal")).hide();
+                    }
+                },
+                () => {
+                    showAlert("Pasted data import cancelled due to duplicates.");
+                }
+            );
+        } else if (newClientsFromPaste.length > 0) {
+            showLoadingSpinner();
+            try {
+                if (db && userId) { // Only attempt Firestore batch write if initialized
+                    const batch = writeBatch(db);
+                    newClientsFromPaste.forEach(client => {
+                        const newDocRef = doc(collection(db, `artifacts/${appId}/users/${userId}/clients`));
+                        client.id = newDocRef.id;
+                        batch.set(newDocRef, client);
+                    });
+                    await batch.commit();
+                } else {
+                    showAlert("Firestore not initialized. Data will not be imported to the cloud.", "Warning");
+                    console.warn("Firestore not initialized. Data will not be imported to the cloud.");
+                    // Fallback to adding to local 'clients' array
+                    clients = clients.concat(newClientsFromPaste);
+                    renderClients();
+                    updateDashboardSummary();
+                }
+                document.getElementById("pastedData").value = "";
+                bootstrap.Modal.getInstance(document.getElementById("pasteExcelModal")).hide();
+                showAlert(newClientsFromPaste.length + " client(s) pasted and added.");
+            } catch (e) {
+                console.error("Error during pasted data import: ", e);
+                showAlert("Error during pasted data import. Please try again.");
+            } finally {
+                hideLoadingSpinner();
+            }
+        } else {
+            document.getElementById("pasteStatusMessage").textContent = "No valid clients found in pasted data or all were skipped.";
+            document.getElementById("pasteStatusMessage").style.display = "block";
+            showAlert("No valid clients found in pasted data.");
+        }
+    }
+
+    // --- Data Formatting/Normalization Functions ---
+    function formatIdNumber(id) {
+        const cleanedId = String(id || "").replace(/[^0-9]/g, '').trim();
+        if (cleanedId.length === 13) return cleanedId;
+        return "";
+    }
+
+    function formatContactNumber(contact) {
+        const cleanedContact = String(contact || "").replace(/[^0-9]/g, '').trim();
+        if (cleanedContact.length >= 8) return cleanedContact;
+        return "";
+    }
+
+    function formatAccountNumber(account) {
+        const cleanedAccount = String(account || "").replace(/[^0-9]/g, '').trim();
+        if (cleanedAccount.length >= 5) return cleanedAccount;
+        return "";
+    }
+
+    function formatBankDetails(bankField) {
+        const trimmedField = String(bankField || "").trim();
+        if (!trimmedField) return "";
+
+        const parts = trimmedField.split(/\s+/);
+        let accountNumber = "";
+        let bankName = "";
+
+        if (parts.length > 0) {
+            let potentialAccount = parts[0].replace(/[^0-9]/g, '');
+            if (potentialAccount.length >= 5) {
+                accountNumber = potentialAccount;
+                parts.shift();
+            }
+        }
+        if (parts.length > 0) {
+            bankName = parts.join(' ');
+            if (!banks.includes(bankName) && banks.includes(bankName.toUpperCase())) {
+                bankName = bankName.toUpperCase();
+            }
+        }
+        
+        if (accountNumber && bankName) return `${accountNumber} ${bankName}`;
+        if (accountNumber) return accountNumber;
+        if (bankName) return bankName;
+        return "";
+    }
+
+    // --- Duplicate Flagging Logic ---
+    function isDuplicate(newClient) {
+        const isEditing = !!document.getElementById('clientId').value;
+
+        return clients.find(existingClient => {
+            if (isEditing && existingClient.id === newClient.id) {
+                return false;
+            }
+
+            const newId = formatIdNumber(newClient.idNumber);
+            const existingId = formatIdNumber(existingClient.idNumber);
+            if (newId !== "" && newId === existingId) {
+                return true;
+            }
+
+            const newContact = formatContactNumber(newClient.contact);
+            const existingContact = formatContactNumber(existingClient.contact);
+            if (newContact !== "" && newContact === existingContact) {
+                return true;
+            }
+
+            const newEmail = (newClient.email || "").toLowerCase();
+            const existingEmail = (existingClient.email || "").toLowerCase();
+            if (newEmail && newEmail !== "" && newEmail === existingEmail) {
+                return true;
+            }
+
+            const idReliable = newId !== "";
+            const contactReliable = newContact !== "";
+            const emailReliable = newEmail !== "";
+
+            if (!idReliable && !contactReliable && !emailReliable &&
+                (newClient.surname || "").toLowerCase() === (existingClient.surname || "").toLowerCase() &&
+                (newClient.name || "").toLowerCase() === (existingClient.name || "").toLowerCase() &&
+                newClient.surname !== "" && newClient.name !== "") {
+                return true;
+            }
+            return false;
+        });
+    }
+
+    // --- Single Client Duplicate Modal (from form) ---
+    function showDuplicateModal(newClient, existingClient) {
+        document.getElementById('existingClientDetails').innerHTML = `
+            <p><strong>Name:</strong> ${existingClient.name} ${existingClient.surname}</p>
+            <p><strong>ID Number:</strong> ${existingClient.idNumber}</p>
+            <p><strong>Contact:</strong> ${existingClient.contact}</p>
+            <p><strong>Bank Details:</strong> ${existingClient.bankDetails}</p>
+            <p><strong>Email:</strong> ${existingClient.email}</p>
+        `;
+        document.getElementById('newClientDetails').innerHTML = `
+            <p><strong>Name:</strong> ${newClient.name} ${newClient.surname}</p>
+            <p><strong>ID Number:</strong> ${newClient.idNumber}</p>
+            <p><strong>Contact:</strong> ${newClient.contact}</p>
+            <p><strong>Bank Details:</strong> ${newClient.bankDetails}</p>
+            <p><strong>Email:</strong> ${newClient.email}</p>
+        `;
+
+        potentialDuplicateClient = { new: newClient, existing: existingClient };
+
+        const duplicateModal = new bootstrap.Modal(document.getElementById('duplicateModal'));
+        duplicateModal.show();
+    }
+
+    document.getElementById('forceAddDuplicate').addEventListener('click', async () => {
+        if (potentialDuplicateClient) {
+            potentialDuplicateClient.new.isDuplicateFlagged = true;
+            await saveClientToFirestore(potentialDuplicateClient.new);
+            const duplicateModal = bootstrap.Modal.getInstance(document.getElementById('duplicateModal'));
+            duplicateModal.hide();
+        }
+    });
+
+    document.getElementById('updateExistingClient').addEventListener('click', async () => {
+        if (potentialDuplicateClient) {
+            const updatedClient = { ...potentialDuplicateClient.existing, ...potentialDuplicateClient.new };
+            updatedClient.id = potentialDuplicateClient.existing.id;
+            delete updatedClient.isDuplicateFlagged;
+            await saveClientToFirestore(updatedClient);
+            const duplicateModal = bootstrap.Modal.getInstance(document.getElementById('duplicateModal'));
+            duplicateModal.hide();
+        }
+    });
+
+    // --- Bulk Import Duplicate Review Modal (for Excel/Pasted Data) ---
+    function showBulkImportDuplicateModal(duplicates) {
+        bulkDuplicatesToReview = duplicates;
+        document.getElementById('duplicateCountSummary').textContent = duplicates.length;
+        const container = document.getElementById('duplicateListContainer');
+        container.innerHTML = '';
+
+        duplicates.forEach((dup, index) => {
+            const item = document.createElement('div');
+            item.classList.add('card', 'mb-3');
+            item.innerHTML = `
+                <div class="card-header bg-light">
+                    <strong>Duplicate #${index + 1}</strong>
+                    <span class="badge bg-warning text-dark float-end">Original Excel Row: ${JSON.stringify(dup.originalExcelRow)}</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Existing Client:</h6>
+                            <p><strong>Name:</strong> ${dup.existingClient.name} ${dup.existingClient.surname}</p>
+                            <p><strong>ID:</strong> ${dup.existingClient.idNumber}</p>
+                            <p><strong>Contact:</strong> ${dup.existingClient.contact}</p>
+                            <p><strong>Bank Details:</strong> ${dup.existingClient.bankDetails}</p>
+                            <p><strong>Email:</strong> ${dup.existingClient.email}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>New Data from Excel:</h6>
+                            <p><strong>Name:</strong> ${dup.newClient.name} ${dup.newClient.surname}</p>
+                            <p><strong>ID:</strong> ${dup.newClient.idNumber}</p>
+                            <p><strong>Contact:</strong> ${dup.newClient.contact}</p>
+                            <p><strong>Bank Details:</strong> ${dup.newClient.bankDetails}</p>
+                            <p><strong>Email:</strong> ${dup.newClient.email}</p>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <label for="action-${index}" class="form-label">Action:</label>
+                        <select class="form-select action-select" data-index="${index}">
+                            <option value="skip" ${dup.action === 'skip' ? 'selected' : ''}>Skip (Don't import this new entry)</option>
+                            <option value="add" ${dup.action === 'add' ? 'selected' : ''}>Add As New (Allow duplicate)</option>
+                            <option value="update" ${dup.action === 'update' ? 'selected' : ''}>Update Existing Client with New Data</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+
+        container.querySelectorAll('.action-select').forEach(select => {
+            select.addEventListener('change', (e) => {
+                const index = e.target.dataset.index;
+                bulkDuplicatesToReview[index].action = e.target.value;
+            });
+        });
+
+        const bulkModal = new bootstrap.Modal(document.getElementById('bulkImportDuplicateModal'));
+        bulkModal.show();
+    }
+
+    document.getElementById('applyGlobalAction').addEventListener('click', () => {
+        const globalAction = document.getElementById('applyToAllAction').value;
+        if (globalAction) {
+            bulkDuplicatesToReview.forEach(dup => {
+                dup.action = globalAction;
+                const selectElement = document.querySelector(`.action-select[data-index="${bulkDuplicatesToReview.indexOf(dup)}"]`);
+                if (selectElement) {
+                    selectElement.value = globalAction;
+                }
+            });
+        } else {
+            showAlert("Please select a global action first.");
+        }
+    });
+
+    document.getElementById('confirmBulkImport').addEventListener('click', async () => {
+        const importedCount = { added: 0, updated: 0, skipped: 0 };
+        const batch = writeBatch(db);
+
+        bulkDuplicatesToReview.forEach(dup => {
+            if (dup.action === 'add') {
+                dup.newClient.isDuplicateFlagged = true;
+                const newDocRef = doc(collection(db, `artifacts/${appId}/users/${userId}/clients`));
+                dup.newClient.id = newDocRef.id;
+                batch.set(newDocRef, dup.newClient);
+                importedCount.added++;
+            } else if (dup.action === 'update') {
+                const updatedClient = { ...dup.existingClient, ...dup.newClient };
+                updatedClient.id = dup.existingClient.id;
+                delete updatedClient.isDuplicateFlagged;
+                batch.set(doc(db, `artifacts/${appId}/users/${userId}/clients`, updatedClient.id), updatedClient, { merge: true });
+                importedCount.updated++;
+            } else {
+                importedCount.skipped++;
+            }
+        });
+
+        showLoadingSpinner();
+        try {
+            if (db && userId) { // Only attempt Firestore batch write if initialized
+                await batch.commit();
+            } else {
+                showAlert("Firestore not initialized. Bulk import changes will not be saved to the cloud.", "Warning");
+                console.warn("Firestore not initialized. Bulk import changes will not be saved to the cloud.");
+                // Fallback for local changes if Firestore is not available
+                // This would involve manually applying the add/update/skip logic to the local 'clients' array
+                // For simplicity here, we'll just show the alert.
+            }
+            const bulkModal = bootstrap.Modal.getInstance(document.getElementById('bulkImportDuplicateModal'));
+            bulkModal.hide();
+            showAlert(`Bulk import results:\nAdded: ${importedCount.added}\nUpdated: ${importedCount.updated}\nSkipped: ${importedCount.skipped}`);
+        } catch (e) {
+            console.error("Error committing bulk import batch: ", e);
+            showAlert("Error during bulk import. Please try again.");
+        } finally {
+            hideLoadingSpinner();
+        }
+    });
+
+    // --- Print Function ---
+    function printClientTable() {
+        const listTitle = listNamesMap.get(currentListId) || "Client List";
+        const customHeaders = JSON.parse(localStorage.getItem(`customHeaders_${currentListId}`)) || defaultHeaderKeys;
+        const headerHtml = customHeaders.map(header => `<th>${header}</th>`).join('');
+
+        let tableRowsHtml = '';
+        clients.forEach(client => {
+            const originalIndex = clients.indexOf(client);
+            const displayNo = originalIndex !== -1 ? originalIndex + 1 : '-';
+
+            tableRowsHtml += `
+                <tr>
+                    <td>${displayNo}</td>
+                    <td>${client.surname}</td>
+                    <td>${client.name}</td>
+                    <td>${client.idNumber}</td>
+                    <td>${client.contact}</td>
+                    <td>${client.bankDetails}</td>
+                    <td>${client.email}</td>
+                </tr>
+            `;
+        });
+
+        const printWindow = window.open("", "_blank");
+        printWindow.document.write("<html><head><title>Print Clients</title>");
+        printWindow.document.write('<style>');
+        printWindow.document.write('body{font-family:Arial, sans-serif; margin: 20px;}');
+        printWindow.document.write('h2{text-align:center; margin-bottom: 20px; color: #333;}');
+        printWindow.document.write('table{width:100%; border-collapse:collapse; margin-top: 20px;}');
+        printWindow.document.write('th,td{border:1px solid #ddd; padding: 8px; text-align:left; font-size:12px;}');
+        printWindow.document.write('th{background-color:#f2f2f2;}');
+        printWindow.document.write('</style>');
+        printWindow.document.write("</head><body>");
+        printWindow.document.write(`<h2>${listTitle} - Client List</h2>`);
+        printWindow.document.write('<table class="table table-striped">');
+        printWindow.document.write(`<thead><tr>${headerHtml}</tr></thead>`);
+        printWindow.document.write(`<tbody>${tableRowsHtml}</tbody>`);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+    }
+
+    // --- Clear All Clients in Current List ---
+    document.getElementById('clearDatabaseBtn').addEventListener('click', function() {
+        showConfirm(`Are you sure you want to clear ALL clients in the current list ("${listNamesMap.get(currentListId)}")? This cannot be undone.`, "Confirm Clear All", async () => {
+            showLoadingSpinner();
+            try {
+                if (db && userId) { // Only attempt Firestore deletion if initialized
+                    const clientsToDeleteQuery = query(collection(db, `artifacts/${appId}/users/${userId}/clients`), where("listId", "==", currentListId));
+                    const snapshot = await getDocs(clientsToDeleteQuery);
+                    const batch = writeBatch(db);
+                    snapshot.docs.forEach(doc => {
+                        batch.delete(doc.ref);
+                    });
+                    await batch.commit();
+                    showAlert("All clients in the current list have been cleared.");
+                } else {
+                    showAlert("Firestore not initialized. Cannot clear clients from cloud.", "Warning");
+                    console.warn("Firestore not initialized. Cannot clear clients from cloud.");
+                    // Fallback for local clearing
+                    clients = [];
+                    renderClients();
+                    updateDashboardSummary();
+                }
+            } catch (e) {
+                console.error("Error clearing clients: ", e);
+                showAlert("Error clearing clients. Please try again.");
+            } finally {
+                hideLoadingSpinner();
+            }
+        });
+    });
+
+    // --- Authentication and Initial Setup ---
+    // Removed old local storage login variables and functions.
+    // Firebase now handles authentication automatically.
+
+    async function initializeFirebaseAndApp() {
+        console.log("initializeFirebaseAndApp: Starting Firebase initialization...");
+        document.getElementById('loginOverlayMessage').textContent = 'Initializing application...';
+        document.getElementById('loginOverlay').style.display = 'flex'; // Ensure it's visible initially
+        document.getElementById('mainAppContent').style.display = 'none'; // Ensure main app is hidden
+
+        // Set a timeout for authentication
+        let authTimeout = setTimeout(() => {
+            if (!userId) { // If userId is still null after timeout
+                console.warn("Authentication timed out. Displaying app without full authentication.");
+                document.getElementById('loginOverlayMessage').textContent = 'Authentication timed out. Some features may be limited. Please refresh if issues persist.';
+                // Directly hide overlay and show main content
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('mainAppContent').style.display = 'block';
+                hideLoadingSpinner(); // Hide the general loading spinner too
+            }
+        }, 10000); // 10 seconds timeout
+
+        try {
+            // Check if firebaseConfig is valid before initializing
+            if (Object.keys(firebaseConfig).length === 0 || firebaseConfig.apiKey === "YOUR_API_KEY") {
+                const errorMessage = "Firebase configuration is missing or empty. If running locally, please replace placeholder API keys in the code. If running in Canvas, ensure the environment provides __firebase_config.";
+                document.getElementById('loginOverlayMessage').textContent = errorMessage;
+                console.error(errorMessage);
+                clearTimeout(authTimeout); // Clear timeout if we're not even trying Firebase
+                // Directly hide overlay and show main content, as Firebase won't work anyway
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('mainAppContent').style.display = 'block';
+                hideLoadingSpinner(); // Hide the general loading spinner
+                return; // Stop Firebase initialization but allow app UI to load
+            }
+
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            console.log("Firebase app, auth, and db initialized.");
+            
+            // Set up onAuthStateChanged listener first
+            // This listener will handle the final UI transition once auth state is known
+            onAuthStateChanged(auth, async (user) => {
+                console.log("onAuthStateChanged: Callback triggered. User:", user ? user.uid : "null");
+                clearTimeout(authTimeout); // Clear timeout as auth state is now known
+
+                if (user) {
+                    userId = user.uid;
+                    document.getElementById('currentUserId').textContent = userId;
+                    console.log("onAuthStateChanged: User authenticated with UID:", userId);
+                    userSettingsDocRef = doc(db, `artifacts/${appId}/users/${userId}/userSettings/settings`);
+                    
+                    try {
+                        // loadUserSettings will handle its own show/hide spinner logic for data loading
+                        await loadUserSettings();
+                        console.log("loadUserSettings completed.");
+                    } catch (loadError) {
+                        console.error("Error during loadUserSettings:", loadError);
+                        showAlert(`Error loading user data: ${loadError.message}`);
+                        document.getElementById('loginOverlayMessage').textContent = `Error loading user data: ${loadError.message}`;
+                    }
+                } else {
+                    console.warn("onAuthStateChanged: User is not authenticated.");
+                    document.getElementById('loginOverlayMessage').textContent = 'Authentication required or failed. Please refresh.';
+                    showAlert("Could not authenticate. You may be using a local version or an issue occurred. Please refresh.", "Authentication Issue");
+                }
+
+                // Final UI transition after auth state is determined
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('mainAppContent').style.display = 'block';
+                hideLoadingSpinner(); // Ensure general loading spinner is hidden
+                console.log("Final UI state set: Login overlay hidden, main content shown.");
+            });
+
+            // Attempt to sign in with custom token or anonymously
+            // This should trigger the onAuthStateChanged listener above
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token !== '') {
+                console.log("Attempting sign-in with custom token...");
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                console.log("No custom token found, attempting anonymous sign-in...");
+                await signInAnonymously(auth);
+            }
+
+        } catch (e) {
+            console.error("Error initializing Firebase or authenticating (outer catch): ", e);
+            let errorMessage = "Failed to initialize application.";
+            if (e.message) {
+                errorMessage += ` Error: ${e.message}`;
+            }
+            showAlert(errorMessage);
+            document.getElementById('loginOverlayMessage').textContent = errorMessage;
+            clearTimeout(authTimeout); // Clear timeout on critical error
+            // Ensure UI is shown even on critical init error
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('mainAppContent').style.display = 'block';
+            hideLoadingSpinner(); // Hide general loading spinner
+        }
+    }
+
+    // --- Theme Management ---
+    function applyTheme(themeName) {
+        document.body.setAttribute('data-theme', themeName);
+        localStorage.setItem('selectedTheme', themeName);
+        const radio = document.getElementById(`theme${themeName.charAt(0).toUpperCase() + themeName.slice(1).replace('-', '')}`);
+        if (radio) {
+            radio.checked = true;
+        }
+    }
+
+    document.querySelectorAll('input[name="colorScheme"]').forEach(radio => {
+        radio.addEventListener('change', (event) => {
+            applyTheme(event.target.value);
+        });
+    });
+
+    // --- Initial Load ---
+    window.addEventListener('load', async function () {
+        const savedTheme = localStorage.getItem('selectedTheme') || 'default';
+        applyTheme(savedTheme);
+
+        populateBankOptions(); // Banks are still local storage
+
+        // The login overlay is now purely for showing loading/authentication status.
+        // It starts visible via CSS and is hidden by initializeFirebaseAndApp on success.
+        // These lines are crucial for initial state.
+        document.getElementById('mainAppContent').style.display = 'none';
+        document.getElementById('loginOverlay').style.display = 'flex';
+
+        // Start Firebase and authentication process
+        await initializeFirebaseAndApp();
+
+        const settingsModalEl = document.getElementById('settingsModal');
+        if (settingsModalEl) {
+            settingsModalEl.addEventListener('show.bs.modal', loadAndRenderCustomHeaders);
+        }
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', handleExcelExport);
+
+</script>
+</body>
+</html>
