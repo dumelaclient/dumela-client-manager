@@ -2111,7 +2111,17 @@ text-muted">
         try {
             // Check if firebaseConfig is valid before initializing
             if (Object.keys(firebaseConfig).length === 0 || firebaseConfig.apiKey === ""AIzaSyAgDrqLWNo57cm9-9h8KI-cC7j0eBCOdu4"") {
-                const errorMessage = "Firebase configuration is missing or empty. If running locally, please replace placeholder API keys in the code. If running in Canvas, ensure the environment provides __firebase_config.";
+                const firebaseConfig = {
+  apiKey: "AIzaSyAgDrqLWNo57cm9-9h8KI-cC7j0eBCOdu4",
+  authDomain: "dumela-client-manager.firebaseapp.com",
+  projectId: "dumela-client-manager",
+  storageBucket: "dumela-client-manager.firebasestorage.app",
+  messagingSenderId: "285393864245",
+  appId: "1:285393864245:web:932e6d6e7307b56e14d37c"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
                 document.getElementById('loginOverlayMessage').textContent = errorMessage;
                 console.error(errorMessage);
                 clearTimeout(authTimeout); // Clear timeout if we're not even trying Firebase
